@@ -1,0 +1,192 @@
+---
+title: "Practical Machine Learning Week 4 Assignment"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, echo=FALSE}
+suppressMessages(library(ggplot2))
+suppressMessages(library(dplyr))
+suppressMessages(library(reshape2))
+suppressMessages(library(caret))
+suppressMessages(library(gridExtra))
+suppressMessages(library(rattle))
+```
+
+```{r, echo=FALSE}
+set.seed(123)
+training<-read.csv("pml-training.csv")
+testing<-read.csv("pml-testing.csv")
+
+training[is.na(training)]<-0
+cormatrix<-cor(training[,c(18,21,37,38,39,40:48,64:66)])
+
+```
+
+```{r, echo=FALSE}
+##Near zero variation variables
+nsv<-nearZeroVar(training,saveMetrics = TRUE)
+```
+
+```{r, echo=FALSE}
+AccelBelt<-training %>% group_by(classe) %>% summarise(average = mean(total_accel_belt))
+AccelArm<-training %>% group_by(classe) %>% summarise(average = mean(total_accel_arm))
+AccelDB<-training %>% group_by(classe) %>% summarise(average = mean(total_accel_dumbbell))
+AccelForearm<-training %>% group_by(classe) %>% summarise(average = mean(total_accel_forearm))
+
+B<-ggplot(AccelBelt,aes(x=classe,y=average,colour=classe))+geom_point(size=5)+theme_minimal()
+A<-ggplot(AccelArm,aes(x=classe,y=average,colour=classe))+geom_point(size=5)+theme_minimal()
+D<-ggplot(AccelDB,aes(x=classe,y=average,colour=classe))+geom_point(size=5)+theme_minimal()
+F<-ggplot(AccelForearm,aes(x=classe,y=average,colour=classe))+geom_point(size=5)+theme_minimal()
+
+#grid.arrange(B,A,D,F, ncol=2)
+
+```
+
+#Look at boxplots (Classe A has much lower median for total belt acceleration)
+```{r, echo=FALSE}
+AccelBeltBP<-ggplot(training,aes(x=classe,y=total_accel_belt,color=classe))+geom_boxplot()
+AccelArmBP<-ggplot(training,aes(x=classe,y=total_accel_arm,color=classe))+geom_boxplot()
+AccelDBBP<-ggplot(training,aes(x=classe,y=total_accel_dumbbell,color=classe))+geom_boxplot()
+AccelForearmBP<-ggplot(training,aes(x=classe,y=total_accel_forearm,color=classe))+geom_boxplot()
+
+grid.arrange(AccelBeltBP,AccelArmBP,AccelDBBP,AccelForearmBP, ncol=2)
+```
+
+#Look at boxplots for magnet_x (Classe A has much lower median for magnet arm. Classe E high variability for belt)
+```{r, echo=FALSE}
+MagnetXBelt<-ggplot(training,aes(x=classe,y=magnet_belt_x,color=classe))+geom_boxplot()
+MagnetXArm<-ggplot(training,aes(x=classe,y=magnet_arm_x,color=classe))+geom_boxplot()
+MagnetXDB<-ggplot(training,aes(x=classe,y=magnet_dumbbell_x,color=classe))+geom_boxplot()
+MagnetXForearm<-ggplot(training,aes(x=classe,y=magnet_forearm_x,color=classe))+geom_boxplot()
+
+grid.arrange(MagnetXBelt,MagnetXArm,MagnetXDB,MagnetXForearm)
+```
+
+```{r, echo=FALSE}
+MagnetYBelt<-ggplot(training,aes(x=classe,y=magnet_belt_y,color=classe))+geom_boxplot()
+MagnetYArm<-ggplot(training,aes(x=classe,y=magnet_arm_y,color=classe))+geom_boxplot()
+MagnetYDB<-ggplot(training,aes(x=classe,y=magnet_dumbbell_y,color=classe))+geom_boxplot()
+MagnetYForearm<-ggplot(training,aes(x=classe,y=magnet_forearm_y,color=classe))+geom_boxplot()
+
+#grid.arrange(MagnetYBelt,MagnetYArm,MagnetYDB,MagnetYForearm)
+```
+
+#Look at boxplots for magnet_z (Classe E high variability for belt)
+```{r, echo=FALSE}
+MagnetZBelt<-ggplot(training,aes(x=classe,y=magnet_belt_z,color=classe))+geom_boxplot()
+MagnetZArm<-ggplot(training,aes(x=classe,y=magnet_arm_z,color=classe))+geom_boxplot()
+MagnetZDB<-ggplot(training,aes(x=classe,y=magnet_dumbbell_z,color=classe))+geom_boxplot()
+MagnetZForearm<-ggplot(training,aes(x=classe,y=magnet_forearm_z,color=classe))+geom_boxplot()
+
+grid.arrange(MagnetZBelt,MagnetZArm,MagnetZDB,MagnetZForearm)
+```
+
+#Look at gyros x (Classe E high variability for belt. Classe A high variability for arm)
+```{r, echo=FALSE}
+GyrosXBelt<-ggplot(training,aes(x=classe,y=gyros_belt_x,color=classe))+geom_boxplot()
+GyrosXArm<-ggplot(training,aes(x=classe,y=gyros_arm_x,color=classe))+geom_boxplot()
+GyrosXDB<-ggplot(training,aes(x=classe,y=gyros_dumbbell_x,color=classe))+geom_boxplot()
+GyrosXForearm<-ggplot(training,aes(x=classe,y=gyros_forearm_x,color=classe))+geom_boxplot()
+
+grid.arrange(GyrosXBelt,GyrosXArm,GyrosXDB,GyrosXForearm)
+```
+
+```{r, echo=FALSE}
+GyrosYBelt<-ggplot(training,aes(x=classe,y=gyros_belt_y,color=classe))+geom_boxplot()
+GyrosYArm<-ggplot(training,aes(x=classe,y=gyros_arm_y,color=classe))+geom_boxplot()
+GyrosYDB<-ggplot(training,aes(x=classe,y=gyros_dumbbell_y,color=classe))+geom_boxplot()
+GyrosYForearm<-ggplot(training,aes(x=classe,y=gyros_forearm_y,color=classe))+geom_boxplot()
+
+#grid.arrange(GyrosYBelt,GyrosYArm,GyrosYDB,GyrosYForearm)
+```
+
+```{r, echo=FALSE}
+GyrosZBelt<-ggplot(training,aes(x=classe,y=gyros_belt_z,color=classe))+geom_boxplot()
+GyrosZArm<-ggplot(training,aes(x=classe,y=gyros_arm_z,color=classe))+geom_boxplot()
+GyrosZDB<-ggplot(training,aes(x=classe,y=gyros_dumbbell_z,color=classe))+geom_boxplot()
+GyrosZForearm<-ggplot(training,aes(x=classe,y=gyros_forearm_z,color=classe))+geom_boxplot()
+
+#grid.arrange(GyrosZBelt,GyrosZArm,GyrosZDB,GyrosZForearm)
+```
+
+#Look at roll (Classe A much lower median for Belt. Classe C much higher median for forearm)
+```{r, echo=FALSE}
+RollBelt<-ggplot(training,aes(x=classe,y=roll_belt,colour=classe))+geom_boxplot()
+RollArm<-ggplot(training,aes(x=classe,y=roll_arm,colour=classe))+geom_boxplot()
+RollDumbbell<-ggplot(training,aes(x=classe,y=roll_dumbbell,colour=classe))+geom_boxplot()
+RollForearm<-ggplot(training,aes(x=classe,y=roll_forearm,colour=classe))+geom_boxplot()
+
+grid.arrange(RollBelt,RollArm,RollDumbbell,RollForearm)
+```
+
+```{r, echo=FALSE}
+PitchBelt<-ggplot(training,aes(x=classe,y=pitch_belt,colour=classe))+geom_boxplot()
+PitchArm<-ggplot(training,aes(x=classe,y=pitch_arm,colour=classe))+geom_boxplot()
+PitchDumbbell<-ggplot(training,aes(x=classe,y=pitch_dumbbell,colour=classe))+geom_boxplot()
+PitchForearm<-ggplot(training,aes(x=classe,y=pitch_forearm,colour=classe))+geom_boxplot()
+
+#grid.arrange(PitchBelt,PitchArm,PitchDumbbell,PitchForearm)
+```
+
+#Look at yaw (Classe A much lower for belt. Class C much higher for Forearm)
+```{r, echo=FALSE}
+YawBelt<-ggplot(training,aes(x=classe,y=yaw_belt,colour=classe))+geom_boxplot()
+YawArm<-ggplot(training,aes(x=classe,y=yaw_arm,colour=classe))+geom_boxplot()
+YawDumbbell<-ggplot(training,aes(x=classe,y=yaw_dumbbell,colour=classe))+geom_boxplot()
+YawForearm<-ggplot(training,aes(x=classe,y=yaw_forearm,colour=classe))+geom_boxplot()
+
+grid.arrange(YawBelt,YawArm,YawDumbbell,YawForearm)
+```
+
+```{r, echo=FALSE}
+ARB<-training %>% group_by(classe) %>% summarise(average = mean(amplitude_roll_belt))
+ARA<-training %>% group_by(classe) %>% summarise(average = mean(amplitude_roll_arm))
+ARD<-training %>% group_by(classe) %>% summarise(average = mean(amplitude_roll_dumbbell))
+ARF<-training %>% group_by(classe) %>% summarise(average = mean(amplitude_roll_forearm))
+
+AmpRollBelt<-ggplot(ARB,aes(x=classe,y=average,colour=classe))+geom_point(size = 5)+labs(y="Belt")
+AmpRollArm<-ggplot(ARA,aes(x=classe,y=average,colour=classe))+geom_point(size = 5)+labs(y="Arm")
+AmpRollDumbbell<-ggplot(ARD,aes(x=classe,y=average,colour=classe))+geom_point(size = 5)+labs(y="Dumbbell")
+AmpRollForearm<-ggplot(ARF,aes(x=classe,y=average,colour=classe))+geom_point(size = 5)+labs(y="Forearm")
+
+#grid.arrange(AmpRollBelt,AmpRollArm,AmpRollDumbbell,AmpRollForearm)
+```
+
+```{r, echo=FALSE}
+APB<-training %>% group_by(classe) %>% summarise(average = mean(amplitude_pitch_belt))
+APA<-training %>% group_by(classe) %>% summarise(average = mean(amplitude_pitch_arm))
+APD<-training %>% group_by(classe) %>% summarise(average = mean(amplitude_pitch_dumbbell))
+APF<-training %>% group_by(classe) %>% summarise(average = mean(amplitude_pitch_forearm))
+
+AmpPitchBelt<-ggplot(APB,aes(x=classe,y=average,colour=classe))+geom_point(size = 5)+labs(y="Belt")
+AmpPitchArm<-ggplot(APA,aes(x=classe,y=average,colour=classe))+geom_point(size = 5)+labs(y="Arm")
+AmpPitchDumbbell<-ggplot(APD,aes(x=classe,y=average,colour=classe))+geom_point(size = 5)+labs(y="Dumbbell")
+AmpPitchForearm<-ggplot(APF,aes(x=classe,y=average,colour=classe))+geom_point(size = 5)+labs(y="Forearm")
+
+#grid.arrange(AmpPitchBelt,AmpPitchArm,AmpPitchDumbbell,AmpPitchForearm)
+```
+#First model
+```{r}
+model<-train(classe~roll_belt+yaw_belt+total_accel_belt+amplitude_roll_belt+amplitude_pitch_belt+gyros_belt_x+gyros_belt_z+amplitude_roll_belt+amplitude_pitch_belt+gyros_belt_x+gyros_belt_z+magnet_belt_x+magnet_belt_y+magnet_belt_z+gyros_arm_x+magnet_arm_x+amplitude_roll_arm+amplitude_pitch_arm+amplitude_roll_dumbbell+amplitude_pitch_dumbbell+roll_forearm+yaw_forearm+amplitude_roll_forearm+amplitude_pitch_forearm,data=training,method="rf")
+
+varImpPlot(model$finalModel)
+```
+
+#Second model with cross validation, taking out irrelevant variables
+```{r}
+train_control<-trainControl(method="cv", number=10, savePredictions=TRUE)
+model2<-train(classe~roll_belt+yaw_belt+total_accel_belt+gyros_belt_x+gyros_belt_z++gyros_belt_x+gyros_belt_z+magnet_belt_x+magnet_belt_y+magnet_belt_z+gyros_arm_x+magnet_arm_x+roll_forearm+yaw_forearm,data=training,method="rf",trControl = train_control)
+
+model2$finalModel
+```
+
+#Prediction
+```{r}
+pred<-predict(model2,newdata = testing)
+pred
+```
+
